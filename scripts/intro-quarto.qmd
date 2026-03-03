@@ -1,0 +1,111 @@
+---
+title: "Intro to Quarto" #yaml section
+format: html
+bibliography: references.bib
+---
+
+# 1. Introduction
+
+<!-- -->
+
+## a. About the data
+
+-   water sample data from the Arctic ocean
+-   data downloaded from the Arctic Data Center: [Tweedie ADC data](https://arcticdata.io/catalog/view/doi:10.18739/A25T3FZ8X)
+
+## b. Setup
+
+```{r}
+#| warning: false
+
+library(readr)
+library(here)  # helpful for relative paths
+
+```
+
+## c. Read in data
+
+```{r}
+#| warning: false
+
+bg_chem <- read_csv(here("data/BGchem2008data.csv"))
+
+```
+
+# 2. Analysis
+
+<!-- -->
+
+```{r}
+#| eval: false
+#| echo: false  # include source code in the output
+
+
+# print column names from dataset
+colnames(bg_chem)
+
+# show data structure
+str(bg_chem)
+
+#show first 6 lines of the dataframe
+head(bg_chem)
+
+
+# get summary of the dataset
+summary(bg_chem)
+
+# print unique value
+unique(bg_chem$Si)
+
+
+```
+
+## a. Calculate summary statistics
+
+## b. Calculate mean Redfield ratio
+
+```{r}
+#calculate some means of nitrate and nitrite
+nitrate <- mean(bg_chem$NO3)
+nitrite <- mean(bg_chem$NO2)
+
+amn <- mean(bg_chem$NH4)
+phos <- mean(bg_chem$P)
+```
+
+
+## c. Plot Redfield ratio
+
+```{r}
+ratio <- (nitrate + nitrite + amn) / phos
+```
+
+Here is the ratio we calculated: `r round(ratio)` 
+
+# 3. Conclusion
+
+For future reference
+
+Markdown formatting
+
+# This is a large title
+
+## this is a smaller title
+
+### [@chawarski2022]
+
+| Col1 | Col2 | Col3 |
+|------|------|------|
+| x    | y    | z    |
+| 2    | 4    | 2    |
+| 5    | 7    | 9    |
+
+### this is the smallest title
+
+*text*
+
+-   list of cool stuff
+    -   cats
+    -   dogs
+    -   skateboards
+    -   
