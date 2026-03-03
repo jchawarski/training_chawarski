@@ -51,8 +51,7 @@ str(bg_chem)
 head(bg_chem)
 
 
-# get summary of the dataset
-summary(bg_chem)
+
 
 # print unique value
 unique(bg_chem$Si)
@@ -61,6 +60,12 @@ unique(bg_chem$Si)
 ```
 
 ## a. Calculate summary statistics
+
+```{r}
+# get summary of the dataset
+summary(bg_chem)
+```
+
 
 ## b. Calculate mean Redfield ratio
 
