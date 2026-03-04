@@ -1,0 +1,220 @@
+---
+title: "Tidying and Wrangling"
+format: html
+---
+
+```{r, echo=FALSE, warning = FALSE}
+library(dplyr)
+library(tidyr)
+library(readr)
+```
+
+# Data Sources
+
+## Read in our data
+
+```{r, message = FALSE}
+
+catch_original <- read_csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1")
+
+```
+
+## Explore
+
+```{r}
+colnames(catch_original)
+
+tail(catch_original)
+
+
+```
+
+## Repair data
+
+```{r}
+catch_modified <- catch_original
+catch_modified$Chinook <- as.numeric(catch_modified$Chinook)
+
+
+```
+
+# Cleand & Reshaping
+
+## using the select() function
+```{r}
+# select() to keep columns that we want
+catch_data <- catch_original %>% 
+  select(Region, Year, Chinook, Sockeye, Coho, Pink, Chum)
+head(catch_data)
+
+# to 
+
+
+```
+
+## changing column contents with mutate()
+
+```{r}
+catch_clean <- catch_original %>% 
+  select(-All, -notesRegCode) %>% 
+  mutate(Chinook = as.numeric(Chinook))
+```
+
+```{r}
+is.na(catch_clean$Chinook)
+
+# get the location of the NA value
+
+i <- which(is.na(catch_clean$Chinook))
+
+# look at that row in the data
+catch_clean[i, ]
+
+# use mutate to fix
+catch_clean <- catch_data %>% 
+  mutate(Chinook = if_else(condition = Chinook == "I",
+                           true = "1", #if true, change to 1 
+                           false = Chinook), # if false, take original value from Chinook column
+         Chinook = as.numeric(Chinook))
+    
+head(catch_clean)
+
+catch_clean[i,]
+
+```
+
+
+## changing file shape using pivot_longer() and pivot_wider()
+
+```{r}
+
+catch_long <- catch_clean %>% 
+  pivot_longer(cols = c(Chinook, Sockeye, Coho, Pink, Chum),
+               names_to = "species", 
+               values_to = "catch")
+
+catch_wide <- catch_long %>% 
+  pivot_wider(names_from = species,
+              values_from = catch)
+
+```
+
+## rename columns with rename()
+
+```{r}
+catch_long <- catch_long %>% 
+  rename(catch_thousands = catch)
+head(catch_long)
+```
+
+
+## use mutate to create a new column
+
+```{r}
+catch_long <- catch_long %>% 
+  mutate(catch = catch_thousands * 1000) %>% 
+  select(-catch_thousands)
+
+head(catch_long)
+```
+
+## summary statistics using group_by and summarise()
+
+```{r}
+# get average catch by region
+mean_region <- catch_long %>% 
+  group_by(Region) %>% 
+  summarise(mean_catch = mean(catch))
+
+n_region <- catch_clean %>% 
+  group_by(Region) %>% 
+  summarise(n = n())
+
+```
+
+# Filter rows using filter()
+
+```{r}
+sse_catch <- catch_long %>% 
+  filter(Region == "SSE")
+
+
+catch_million <- catch_long %>% 
+  filter(catch > 1000000)
+
+```
+
+## Sorting data with arrange()
+```{r}
+mean_region <- catch_long %>% 
+  group_by(Region) %>% 
+  summarise(mean_catch = mean(catch)) %>% 
+  arrange(desc(mean_catch))
+```
+
+## Combining dataset together with join()
+
+
+```{r}
+region_defs <- read_csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.303.1") %>% 
+    select(code, mgmtArea)
+
+head(region_defs)
+
+catch_joined <- left_join(catch_long, region_defs, by = c("Region" = "code"))
+
+head(catch_joined)
+
+
+```
+
+
+## split and combine values in columns
+
+```{r}
+sites_df <- data.frame(site = c("HAW-101", "HAW-102", "OAH-320"))
+head(sites_df)
+
+split_df <- sites_df %>% 
+  separate(site, c("island", "site_numer"), sep = "-")
+```
+```{r}
+dates_df <- data.frame(
+  year = c("1930", "1930", "1932"),
+  month = c("12","12", "12"), 
+  day = c("14", "15", "16")
+)
+
+dates_unite <- dates_df %>% 
+  unite(col = date, year, month, day, sep = "-")
+
+```
+
+
+
+```{r}
+catch_original <- read_csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1")
+
+mean_region <- catch_original %>%
+  select(-All, -notesRegCode) %>% 
+  mutate(Chinook = if_else(Chinook == "I", "1", Chinook)) %>% 
+  mutate(Chinook = as.numeric(Chinook)) %>% 
+  pivot_longer(-c(Region, Year), 
+               names_to = "species", 
+               values_to = "catch") %>%
+  mutate(catch = catch * 1000) %>% 
+  group_by(Region) %>% 
+  summarize(mean_catch = mean(catch)) %>% 
+  arrange(desc(mean_catch))
+```
+
+## save our results with write_csv()
+```{r}
+library(here)
+write_csv(mean_region, here("data/mean_catch_by_region.csv"))_
+
+
+```
+
+
+
