@@ -1,0 +1,68 @@
+---
+title: "Visualization with ggplot2 and more"
+format: html
+---
+
+## load libraries
+
+```{r, warnings = FALSE, echo = FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(janitor) # expedite cleaning and exploring data
+library(scales) # scale functions for visualization
+```
+
+## read in data
+
+```{r}
+escape_raw <- read_csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Af119a05b-bbe7-4aea-93c6-85434dcb1c5e")
+```
+
+## clean up column names
+
+```{r}
+escape <- escape_raw %>% clean_names()  # from janitor pkg
+# converts to lower case, snake case format
+```
+
+```{r}
+annual_esc <- escape %>% 
+    filter(species %in% c("Chinook", "Sockeye", "Chum", "Coho", "Pink")) %>%
+    mutate(year = lubridate::year(sample_date)) %>%
+    group_by(species, sasap_region, year) %>%
+    summarize(escapement = sum(daily_count))
+  
+```
+
+
+
+```{r}
+library(DT)
+locations <- escape %>% 
+  distinct(location, latitude, longitude) %>% 
+  drop_na()
+
+datatable(locations)
+
+
+
+```
+
+## Mapping with leaflet
+
+```{r}
+library(leaflet)
+
+leaflet(locations) %>%
+    addTiles() %>%
+    addMarkers(
+        lng = ~ longitude,
+        lat = ~ latitude,
+        popup = ~ location
+    )
+
+```
+
+
