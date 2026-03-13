@@ -1,0 +1,167 @@
+---
+title: "spatial-practice"
+format: html
+---
+
+```{r}
+knb_url <- "https://dev.nceas.ucsb.edu/knb/d1/mn/v2/object/urn%3Auuid%3Aaceaecb2-1ce0-4d41-a839-d3607d32bb58"
+
+download.file(url = knb_url, destfile = 'shapefile_demo_data.zip')
+
+unzip('shapefile_demo_data.zip', exdir = 'data')
+
+file.remove('shapefile_demo_data.zip')
+
+```
+
+```{r}
+library(readr)
+library(here)
+library(sf)
+library(ggplot2)
+library(leaflet)
+library(scales)
+library(ggspatial)
+library(dplyr)
+
+```
+
+```{r}
+# read in shapefile using read_sf()
+ak_rgns_sf <- read_sf(here("data/ak_regions_simp.shp"))
+
+# quick plot
+plot(ak_rgns_sf)
+
+
+
+# check and convert coordinate reference system (crs)
+st_crs(ak_rgns_sf)
+
+ak_rgns_3338_sf <- ak_rgns_sf %>%
+    st_transform(crs = 3338)
+
+st_crs(ak_rgns_3338_sf)
+
+plot(ak_rgns_3338_sf)
+```
+
+```{r}
+
+# returns the names of all the columns in dataset
+colnames(ak_rgns_3338_sf)
+
+ak_rgns_3338_sf %>%
+    select(region)
+
+unique(ak_rgns_3338_sf$region)
+
+ak_rgns_3338_sf %>%
+    filter(region == "Southeast")
+```
+
+## Spatial joins
+
+```{r}
+# read in population data
+pop_df <- read_csv(here("data/alaska_population.csv"))
+
+
+pop_4326_sf <- st_as_sf(pop_df,
+                        coords = c('lng', 'lat'),
+                        crs = 4326,
+                        remove = F)
+
+head(pop_4326_sf)
+
+pop_3338_sf <- st_transform(pop_4326_sf, 
+                            crs = 3338)
+
+pop_joined_sf <- st_join(pop_3338_sf, 
+                         ak_rgns_3338_sf, 
+                         join = st_within)
+
+head(pop_joined_sf)
+
+```
+
+# Calculate the total population
+```{r}
+
+pop_rgn_df <- pop_joined_sf %>%
+    st_drop_geometry() %>%
+    group_by(region) %>%
+    summarize(total_pop = sum(population))
+
+head(pop_rgn_df)
+
+
+pop_rgn_3338_sf <- left_join(ak_rgns_3338_sf, 
+                             pop_rgn_df, 
+                             by = "region")
+
+# plot to check
+plot(pop_rgn_3338_sf["total_pop"])
+
+
+
+pop_mgmt_3338_sf <- pop_rgn_3338_sf %>%
+    group_by(mgmt_area) %>%
+    summarize(total_pop = sum(total_pop))
+
+plot(pop_mgmt_3338_sf["total_pop"])
+
+
+# if we don't want to combine geometries can specify do_union = F
+pop_mgmt_3338_sf <- pop_rgn_3338_sf %>%
+    group_by(mgmt_area) %>%
+    summarize(total_pop = sum(total_pop), do_union = F)
+
+plot(pop_mgmt_3338_sf["total_pop"])
+
+
+write_sf(pop_rgn_3338_sf, here("data/ak_regions_population.shp"))
+
+
+```
+# plotting
+
+```{r}
+
+ggplot(pop_rgn_3338_sf) +
+    geom_sf(aes(fill = total_pop)) +
+    labs(fill = "Total Population") +
+    scale_fill_continuous(low = "khaki",
+                          high =  "firebrick",
+                          labels = comma) +
+    theme_bw()
+
+
+```
+
+## add in rivers and point data from cities
+
+```{r}
+rivers_3338_sf <- read_sf(here("data/ak_rivers_simp.shp"))
+
+ggplot() +
+    geom_sf(data = pop_rgn_3338_sf, 
+            aes(fill = total_pop)) +
+    geom_sf(data = pop_3338_sf, 
+            size = 0.5) +
+    geom_sf(data = rivers_3338_sf,
+            aes(linewidth = StrOrder)) +
+    scale_linewidth(range = c(0.05, 0.5),
+                    guide = "none") +
+    labs(title = "Total Population by Alaska Region",
+         fill = "Total Population") +
+    scale_fill_continuous(low = "khaki",
+                          high =  "firebrick",
+                          labels = comma) +
+    theme_bw() 
+
+
+
+```
+
+

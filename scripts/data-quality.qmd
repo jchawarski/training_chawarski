@@ -1,0 +1,56 @@
+---
+title: "Data Quality"
+format: html
+---
+
+## Quick Data Summaries using 'skimr' and 'visdat'
+
+```{r, message = FALSE, warning = FALSE}
+library(skimr)
+library(visdat)
+library(readr)
+library(dplyr)
+library(here)
+library(ggplot2)
+```
+
+```{r}
+bg_chem <- read_csv(here("data/BGchem2008data.csv"), na = "-99")
+```
+
+```{r}
+skim(bg_chem)
+```
+
+```{r}
+ # visdat is a ggplot object
+vis_dat(bg_chem) 
+
+```
+
+## Formalized validation using 'pointblank'
+
+```{r}
+library(pointblank)
+```
+
+```{r}
+bg_chem %>% 
+  col_vals_gt(columns = O2, value = 0, na_pass = TRUE)
+```
+
+
+```{r}
+
+al <- action_levels(warn_at =1, stop_at = 10)
+
+bg_chem %>% 
+    create_agent(actions= al) %>% 
+    col_vals_gt(vars(O2, NO3, NO2, NH4, P, Si), value = 0, na_pass = TRUE) %>% 
+    col_vals_between(columns = vars(CTD_Salinity, Bottle_Salinity), left = 0, right = 42, na_pass = TRUE) %>% 
+    col_vals_between(Latitude, left = -90, right = 90) %>%
+    col_vals_between(Longitude, left = -180, right = 180) %>% 
+    interrogate()
+
+```
+
